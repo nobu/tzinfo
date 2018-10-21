@@ -123,12 +123,14 @@ module TZInfo
             raise ArgumentError, 'offset must be :preserve, :ignore or :treat_as_utc'
         end
 
-        timestamp = case value
-          when Time
+        timestamp = case
+          when value.respond_to?(:subsec)
+            type = :to_time
             for_time(value, ignore_offset, target_utc_offset)
-          when DateTime
+          when value.respond_to?(:jd)
+            type = :to_datetime
             for_datetime(value, ignore_offset, target_utc_offset)
-          when Timestamp
+          when Timestamp === value
             for_timestamp(value, ignore_offset, target_utc_offset)
           else
             raise ArgumentError, "#{value.class} values are not supported"
@@ -138,13 +140,10 @@ module TZInfo
           result = yield timestamp
           raise ArgumentError, 'block must return a Timestamp' unless result.kind_of?(Timestamp)
 
-          case value
-            when Time
-              result.to_time
-            when DateTime
-              result.to_datetime
-            else # Timestamp
-              result
+          if type
+            result.__send__(type)
+          else
+            result
           end
         else
           timestamp
